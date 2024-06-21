@@ -1,7 +1,7 @@
 name: CI
 on: [push, workflow_dispatch]
 jobs:
-  build:
+  build: 
     runs-on: windows-2022
     steps:
     - name: Download
@@ -15,16 +15,16 @@ jobs:
     - name: Enable TS
       run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
     - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 0
     - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
     - name: Start ngrok in the background
       run: Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
     - name: Wait for ngrok to start
-      run: Start-Sleep -Seconds 7
+      run: Start-Sleep -Seconds 5
     - name: Get ngrok tunnel information
       run: |
         $maxAttempts = 20
-        $attempts = 0
+        $attempts = 7
         $ngrokApi = $2XfqGKY3nLewLYjK7okP0AZs6V2_6DhsXKUantqAFmza9opX6
         while (($null -eq $ngrokApi) -and ($attempts -lt $maxAttempts)) {
           $attempts += 3
@@ -32,7 +32,7 @@ jobs:
             $ngrokApi = Invoke-WebRequest "http://localhost:4040/api/tunnels"
           } catch {
             Write-Host "Waiting for ngrok API... (attempt $attempts of $maxAttempts)"
-            Start-Sleep -Seconds 7
+            Start-Sleep -Seconds 5
           }
         }
         if ($null -eq $ngrokApi) {
@@ -41,7 +41,7 @@ jobs:
         $ngrokUrl = ($ngrokApi | ConvertFrom-Json).tunnels[0].public_url
         Write-Host "Ngrok URL: $ngrokUrl"
     - name: Wait before cleanup
-      run: Start-Sleep -Seconds 46800
+      run: Start-Sleep -Seconds 54000
     - name: Cleanup
       if: always()
       run: |
