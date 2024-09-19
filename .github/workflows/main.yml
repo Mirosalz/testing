@@ -25,7 +25,7 @@ jobs:
       run: |
         $maxAttempts = 20
         $attempts = 7
-        $ngrokApi = $2XfqGKY3nLewLYjK7okP0AZs6V2_6DhsXKUantqAFmza9opX6
+        $ngrokApi = $2mHe6kzEOfWTUrMYgkDJfUal0tQ_3rEMfUCCPVWEhi1P8kc9M
         while (($null -eq $ngrokApi) -and ($attempts -lt $maxAttempts)) {
           $attempts += 3
           try {
