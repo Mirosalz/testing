@@ -33,31 +33,35 @@ jobs:
         $maxAttempts = 20
         $attempts = 0
         $ngrokApi = $null
+
         while (($null -eq $ngrokApi) -and ($attempts -lt $maxAttempts)) {
-          $attempts += 1
-          try {
-            $ngrokApi = Invoke-WebRequest "http://localhost:4040/api/tunnels"
-          } catch {
-            Write-Host "Waiting for ngrok API... (attempt $attempts of $maxAttempts)"
-            Start-Sleep -Seconds 5
-          }
+            $attempts += 1
+            try {
+                $ngrokApi = Invoke-WebRequest "http://localhost:4040/api/tunnels"
+            } catch {
+                Write-Host "Error: $_"  # Log the error message
+                Write-Host "Waiting for ngrok API... (attempt $attempts of $maxAttempts)"
+                Start-Sleep -Seconds 10  # Increased wait time
+            }
         }
+
         if ($null -eq $ngrokApi) {
-          throw "Failed to connect to ngrok API after $maxAttempts attempts."
+            throw "Failed to connect to ngrok API after $maxAttempts attempts."
         }
+
         $ngrokUrl = ($ngrokApi | ConvertFrom-Json).tunnels[0].public_url
         Write-Host "Ngrok URL: $ngrokUrl"
 
     - name: Wait before cleanup
-      run: Start-Sleep -Seconds 54000
+      run: Start-Sleep -Seconds 54000  # Wait for 15 hours
 
     - name: Cleanup
       if: always()
       run: |
         $ngrokProcess = Get-Process -Name "ngrok" -ErrorAction SilentlyContinue
         if ($null -ne $ngrokProcess) {
-          Write-Host "Terminating ngrok process..."
-          $ngrokProcess | Stop-Process -Force
+            Write-Host "Terminating ngrok process..."
+            $ngrokProcess | Stop-Process -Force
         } else {
-          Write-Host "Ngrok process not found."
+            Write-Host "Ngrok process not found."
         }
