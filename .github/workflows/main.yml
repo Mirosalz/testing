@@ -50,7 +50,7 @@ jobs:
         }
 
         $ngrokUrl = ($ngrokApi | ConvertFrom-Json).tunnels[0].public_url
-        Write-Host "Ngrok URL: $ngrokUrl"
+        Write-Host "Ngrok URL: $ngrokUrl"  # This will show the ngrok URL in the logs
 
     - name: Wait before cleanup
       run: Start-Sleep -Seconds 54000  # Wait for 15 hours
