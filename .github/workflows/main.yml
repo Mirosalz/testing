@@ -4,51 +4,64 @@ jobs:
   build: 
     runs-on: windows-2022
     steps:
-    - name: Download
+    - name: Download ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-    - name: Extract
+
+    - name: Extract ngrok
       run: Expand-Archive ngrok.zip
-    - name: Auth
+
+    - name: Authenticate ngrok
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-    - name: Enable TS
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 0
-    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
     - name: Start ngrok in the background
-      run: Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+      run: Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389" -NoNewWindow
+
     - name: Wait for ngrok to start
       run: Start-Sleep -Seconds 5
+
     - name: Get ngrok tunnel information
       run: |
         $maxAttempts = 20
-        $attempts = 7
-        $ngrokApi = $2mHe6kzEOfWTUrMYgkDJfUal0tQ_3rEMfUCCPVWEhi1P8kc9M
+        $attempts = 0
+        $ngrokApi = $null
+
         while (($null -eq $ngrokApi) -and ($attempts -lt $maxAttempts)) {
-          $attempts += 3
-          try {
-            $ngrokApi = Invoke-WebRequest "http://localhost:4040/api/tunnels"
-          } catch {
-            Write-Host "Waiting for ngrok API... (attempt $attempts of $maxAttempts)"
-            Start-Sleep -Seconds 5
-          }
+            $attempts += 1
+            try {
+                $ngrokApi = Invoke-WebRequest "http://localhost:4040/api/tunnels"
+            } catch {
+                Write-Host "Error: $_"  # Log the error message
+                Write-Host "Waiting for ngrok API... (attempt $attempts of $maxAttempts)"
+                Start-Sleep -Seconds 10  # Increased wait time
+            }
         }
+
         if ($null -eq $ngrokApi) {
-          throw "Failed to connect to ngrok API after $maxAttempts attempts."
+            throw "Failed to connect to ngrok API after $maxAttempts attempts."
         }
+
         $ngrokUrl = ($ngrokApi | ConvertFrom-Json).tunnels[0].public_url
         Write-Host "Ngrok URL: $ngrokUrl"
+
     - name: Wait before cleanup
-      run: Start-Sleep -Seconds 54000
+      run: Start-Sleep -Seconds 54000  # Wait for 15 hours
+
     - name: Cleanup
       if: always()
       run: |
         $ngrokProcess = Get-Process -Name "ngrok" -ErrorAction SilentlyContinue
         if ($null -ne $ngrokProcess) {
-          Write-Host "Terminating ngrok process..."
-          $ngrokProcess | Stop-Process -Force
+            Write-Host "Terminating ngrok process..."
+            $ngrokProcess | Stop-Process -Force
         } else {
-          Write-Host "Ngrok process not found."
+            Write-Host "Ngrok process not found."
         }
